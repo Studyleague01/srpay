@@ -1,4 +1,4 @@
-\name: Download YouTube Audio via Invidious
+name: Download YouTube Audio via Invidious
 
 on:
   workflow_dispatch:
