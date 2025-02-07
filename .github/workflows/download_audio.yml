@@ -1,0 +1,45 @@
+name: Download YouTube Audio via Invidious
+
+on:
+  workflow_dispatch:
+    inputs:
+      video_id:
+        description: 'YouTube Video ID'
+        required: true
+        type: string
+
+jobs:
+  download_audio:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: sudo apt-get install -y jq wget
+
+      - name: Fetch Highest Quality Audio Stream
+        id: fetch_audio
+        run: |
+          VIDEO_ID="${{ github.event.inputs.video_id }}"
+          API_URL="https://invidious.nikkosphere.com/api/v1/videos/${VIDEO_ID}"
+
+          echo "Fetching available audio formats from Invidious..."
+          AUDIO_URL=$(curl -s "$API_URL" | jq -r '.adaptiveFormats | map(select(.container == "m4a" or .container == "webm")) | sort_by(.bitrate) | reverse | .[0].url')
+
+          if [[ -z "$AUDIO_URL" ]]; then
+            echo "No audio stream found!"
+            exit 1
+          fi
+
+          echo "Downloading highest-quality audio..."
+          wget -O "${VIDEO_ID}.m4a" "$AUDIO_URL"
+
+          echo "AUDIO_FILE=${VIDEO_ID}.m4a" >> $GITHUB_ENV
+
+      - name: Upload Audio as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: downloaded-audio
+          path: ${{ env.AUDIO_FILE }}
