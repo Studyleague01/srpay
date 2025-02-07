@@ -19,7 +19,7 @@ jobs:
       - name: Install Dependencies
         run: sudo apt-get install -y jq wget
 
-      - name: Fetch Highest Quality Audio Stream
+      - name: Fetch Direct Audio Stream URL
         id: fetch_audio
         run: |
           VIDEO_ID="${{ github.event.inputs.video_id }}"
@@ -28,18 +28,19 @@ jobs:
           echo "Fetching available audio formats from Invidious..."
           AUDIO_URL=$(curl -s "$API_URL" | jq -r '.adaptiveFormats | map(select(.container == "m4a" or .container == "webm")) | sort_by(.bitrate) | reverse | .[0].url')
 
-          if [[ -z "$AUDIO_URL" ]]; then
+          if [[ -z "$AUDIO_URL" || "$AUDIO_URL" == "null" ]]; then
             echo "No audio stream found!"
             exit 1
           fi
 
-          echo "Downloading highest-quality audio..."
-          wget -O "${VIDEO_ID}.m4a" "$AUDIO_URL"
+          echo "Using direct stream URL: $AUDIO_URL"
+          echo "AUDIO_URL=$AUDIO_URL" >> $GITHUB_ENV
 
-          echo "AUDIO_FILE=${VIDEO_ID}.m4a" >> $GITHUB_ENV
+      - name: Download Audio Directly
+        run: wget -O "${{ github.event.inputs.video_id }}.m4a" "$AUDIO_URL"
 
       - name: Upload Audio as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: downloaded-audio
-          path: ${{ env.AUDIO_FILE }}
+          path: "${{ github.event.inputs.video_id }}.m4a"
