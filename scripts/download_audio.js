@@ -1,87 +1,57 @@
 const axios = require("axios");
 const fs = require("fs");
-const https = require("https");
 const path = require("path");
-const util = require("util");
 
-const VIDEO_ID = process.argv[2];
-const API_URL = "https://cobalt-api.kwiatekmiki.com/";
-const OUTPUT_DIR = "downloads";
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000; // 1 second
+const COBALT_API = "https://cobalt-api.kwiatekmiki.com";
+const DOWNLOAD_DIR = path.join(__dirname, "..", "downloads");
 
-async function fetchAudioUrl(videoId, attempt = 1) {
-  try {
-    console.log(`🔍 Attempt ${attempt}: Fetching audio URL for video ID: ${videoId}...`);
-
-    const response = await axios.post(
-      API_URL,
-      {
-        url: `https://www.youtube.com/watch?v=${videoId}`,
-        downloadMode: "audio",
-        audioFormat: "mp3",
-      },
-      {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      }
-    );
-
-    if (response.data.status === "tunnel" || response.data.status === "redirect") {
-      return response.data.url; // Direct download URL
-    } else {
-      throw new Error(`Unexpected API response: ${JSON.stringify(response.data)}`);
-    }
-  } catch (error) {
-    console.error(`❌ Error fetching URL: ${error.message}`);
-
-    if (attempt < MAX_RETRIES) {
-      console.log(`⏳ Retrying in ${RETRY_DELAY / 1000} seconds...`);
-      await util.promisify(setTimeout)(RETRY_DELAY);
-      return fetchAudioUrl(videoId, attempt + 1);
-    } else {
-      console.error("❌ Max retries reached. Exiting.");
-      process.exit(1);
-    }
-  }
+// Ensure the downloads directory exists
+if (!fs.existsSync(DOWNLOAD_DIR)) {
+    fs.mkdirSync(DOWNLOAD_DIR);
 }
 
-async function downloadAudio(videoId, audioUrl) {
-  const filePath = path.join(OUTPUT_DIR, `${videoId}.mp3`);
+// Get the video ID from CLI argument
+const videoId = process.argv[2];
 
-  if (!fs.existsSync(OUTPUT_DIR)) {
-    fs.mkdirSync(OUTPUT_DIR);
-  }
-
-  console.log(`🎵 Downloading audio from: ${audioUrl}`);
-
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(filePath);
-    https
-      .get(audioUrl, (response) => {
-        if (response.statusCode !== 200) {
-          reject(new Error(`Failed to download file. Status Code: ${response.statusCode}`));
-          return;
-        }
-
-        response.pipe(file);
-
-        file.on("finish", () => {
-          file.close();
-          console.log(`✅ Downloaded: ${filePath}`);
-          resolve();
-        });
-      })
-      .on("error", (error) => {
-        fs.unlink(filePath, () => {}); // Cleanup on error
-        reject(error);
-      });
-  });
+if (!videoId) {
+    console.error("❌ Missing video ID. Usage: node download_audio.js <VIDEO_ID>");
+    process.exit(1);
 }
 
 (async () => {
-  const audioUrl = await fetchAudioUrl(VIDEO_ID);
-  await downloadAudio(VIDEO_ID, audioUrl);
+    try {
+        console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
+        const response = await axios.post(
+            `${COBALT_API}/`,
+            {
+                url: `https://www.youtube.com/watch?v=${videoId}`,
+                audioFormat: "mp3",
+                downloadMode: "audio"
+            },
+            {
+                headers: {
+                    "Accept": "application/json",
+                    "Content-Type": "application/json"
+                }
+            }
+        );
+
+        const { status, url, filename } = response.data;
+        if (status !== "redirect" && status !== "tunnel") {
+            console.error("❌ Failed to retrieve audio URL.");
+            process.exit(1);
+        }
+
+        console.log(`🎵 Downloading audio from: ${url}`);
+        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
+        const writer = fs.createWriteStream(filePath);
+        const audioResponse = await axios({ url, method: "GET", responseType: "stream" });
+
+        audioResponse.data.pipe(writer);
+
+        writer.on("finish", () => console.log(`✅ Downloaded: ${filePath}`));
+        writer.on("error", (err) => console.error("❌ Error saving file:", err));
+    } catch (error) {
+        console.error("❌ Error:", error.message);
+    }
 })();
