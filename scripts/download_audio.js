@@ -2,7 +2,7 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-const videoId = process.argv[2];
+const videoId = "lhpUP_DOH0g";
 
 if (!videoId) {
   console.error("❌ Error: No video ID provided.");
