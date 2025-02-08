@@ -9,7 +9,7 @@ on:
         type: string
 
 permissions:
-  contents: write  # ✅ Allows pushing changes to the repo
+  contents: write  # Allow GitHub Actions to push commits
 
 jobs:
   download-audio:
