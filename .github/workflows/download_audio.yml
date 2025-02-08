@@ -25,7 +25,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install axios fs
+        run: npm install axios open
 
       - name: Run download script
         run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
