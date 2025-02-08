@@ -1,12 +1,15 @@
 name: Download YouTube Audio
 
 on:
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:
     inputs:
       video_id:
         description: "YouTube Video ID"
         required: true
         type: string
+
+permissions:
+  contents: write  # ✅ Allows pushing changes to the repo
 
 jobs:
   download-audio:
