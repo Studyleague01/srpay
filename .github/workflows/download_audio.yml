@@ -1,52 +1,36 @@
-name: Download YouTube Audio via Invidious
+name: Download YouTube Audio
 
 on:
-  workflow_dispatch:
+  workflow_dispatch:  # Allows manual trigger
     inputs:
       video_id:
-        description: 'YouTube Video ID'
+        description: "YouTube Video ID"
         required: true
         type: string
 
 jobs:
-  download_audio:
+  download-audio:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Install Dependencies
-        run: sudo apt-get install -y jq wget
-
-      - name: Fetch Direct Audio Stream URL
-        id: fetch_audio
-        run: |
-          VIDEO_ID="${{ github.event.inputs.video_id }}"
-          API_URL="https://invidious.nikkosphere.com/api/v1/videos/${VIDEO_ID}"
-
-          echo "Fetching video details from Invidious..."
-          RESPONSE=$(curl -s "$API_URL")
-          echo "API Response: $RESPONSE"
-
-          # Extract highest quality audio URL
-          AUDIO_URL=$(echo "$RESPONSE" | jq -r '.adaptiveFormats | map(select(.mimeType | startswith("audio/"))) | sort_by(.bitrate) | reverse | .[0].url')
-
-          if [[ -z "$AUDIO_URL" || "$AUDIO_URL" == "null" ]]; then
-            echo "❌ No valid audio stream found!"
-            exit 1
-          fi
-
-          echo "✅ Using audio URL: $AUDIO_URL"
-          echo "AUDIO_URL=$AUDIO_URL" >> $GITHUB_ENV
-
-      - name: Download Audio Directly
-        run: |
-          echo "Downloading from URL: $AUDIO_URL"
-          wget --no-check-certificate -O "${{ github.event.inputs.video_id }}.m4a" "$AUDIO_URL" || (echo "❌ Download failed!" && exit 1)
-
-      - name: Upload Audio as Artifact
-        uses: actions/upload-artifact@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          name: downloaded-audio
-          path: "${{ github.event.inputs.video_id }}.m4a"
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install axios fs
+
+      - name: Run download script
+        run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
+
+      - name: Commit and push audio file
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add downloads/
+          git commit -m "Add downloaded audio for ${{ github.event.inputs.video_id }}"
+          git push
