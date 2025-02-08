@@ -1,9 +1,9 @@
 const axios = require("axios");
 const fs = require("fs");
+const https = require("https");
 const path = require("path");
 
-const videoId = process.argv[2]; // Get video ID from command line argument
-const apiKey = "eee55a9833msh8f2dbd8e2b7970bp194fefjsne09ddc646e78"; // 🔥 Replace with your actual RapidAPI key
+const videoId = process.argv[2];
 
 if (!videoId) {
   console.error("❌ No video ID provided.");
@@ -14,41 +14,41 @@ if (!videoId) {
   try {
     console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
 
-    // Call RapidAPI
-    const response = await axios.get("https://youtube-mp36.p.rapidapi.com/dl", {
-      params: { id: videoId },
-      headers: {
-        "x-rapidapi-host": "youtube-mp36.p.rapidapi.com",
-        "x-rapidapi-key": apiKey, // 🔥 API Key used directly
-      },
-    });
+    // Construct Invidious API URL
+    const apiUrl = `https://companion.nikkosphere.com/latest_version?id=${videoId}&itag=140`;
 
-    if (response.data.status !== "ok") {
-      console.error("❌ Failed to get download URL:", response.data.msg);
+    // Fetch the audio URL
+    const response = await axios.get(apiUrl);
+    if (!response.data || typeof response.data !== "string") {
+      console.error("❌ Failed to get valid audio URL.");
       process.exit(1);
     }
 
-    const audioUrl = response.data.link;
+    const audioUrl = response.data;
     console.log(`🎵 Downloading audio from: ${audioUrl}`);
 
-    // Download audio file
-    const audioResponse = await axios({
-      method: "GET",
-      url: audioUrl,
-      responseType: "stream",
-    });
+    // Prepare file path
+    const downloadsDir = path.join(__dirname, "..", "downloads");
+    if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir);
 
-    const filePath = path.join(__dirname, "..", "downloads", `${videoId}.mp3`);
-    const writer = fs.createWriteStream(filePath);
+    const filePath = path.join(downloadsDir, `${videoId}.m4a`);
+    const file = fs.createWriteStream(filePath);
 
-    audioResponse.data.pipe(writer);
+    // Use HTTPS module to download file
+    https.get(audioUrl, (response) => {
+      if (response.statusCode !== 200) {
+        console.error(`❌ HTTP Error: ${response.statusCode}`);
+        process.exit(1);
+      }
 
-    writer.on("finish", () => {
-      console.log(`✅ Downloaded: ${filePath}`);
-    });
+      response.pipe(file);
 
-    writer.on("error", (err) => {
-      console.error("❌ Error writing file:", err);
+      file.on("finish", () => {
+        file.close();
+        console.log(`✅ Downloaded: ${filePath}`);
+      });
+    }).on("error", (err) => {
+      console.error("❌ Error downloading file:", err.message);
       process.exit(1);
     });
 
