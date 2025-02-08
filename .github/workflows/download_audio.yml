@@ -1,4 +1,4 @@
-name: Get YouTube Audio Link
+name: Download YouTube Audio
 on:
   workflow_dispatch:
     inputs:
@@ -7,8 +7,11 @@ on:
         required: true
         type: string
 
+permissions:
+  contents: write  # Allow GitHub Actions to push commits
+
 jobs:
-  get-audio-link:
+  download-audio:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -19,19 +22,28 @@ jobs:
         with:
           node-version: 20
           
+      - name: Create directories
+        run: mkdir -p downloads
+          
       - name: Create package.json
         run: |
           echo '{
-            "name": "youtube-audio",
             "type": "module",
             "dependencies": {
-              "axios": "^1.6.7",
-              "open": "^10.0.3"
+              "axios": "^1.6.7"
             }
           }' > package.json
           
       - name: Install dependencies
         run: npm install
         
-      - name: Run script
+      - name: Run download script
         run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
+        
+      - name: Commit and push audio file
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add downloads/
+          git commit -m "Add downloaded audio for ${{ github.event.inputs.video_id }}"
+          git push
