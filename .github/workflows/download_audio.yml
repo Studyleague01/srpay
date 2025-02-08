@@ -4,29 +4,36 @@ on:
   workflow_dispatch:
     inputs:
       video_id:
-        description: 'YouTube Video ID'
+        description: "YouTube Video ID"
         required: true
+        type: string
+
+permissions:
+  contents: write  # ✅ Allows pushing changes to the repo
 
 jobs:
-  download:
+  download-audio:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Dependencies
-        run: npm install axios fs util https
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
-      - name: Download YouTube Audio
+      - name: Install dependencies
+        run: npm install axios fs
+
+      - name: Run download script
         run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
 
-      - name: Commit and Push Audio File
+      - name: Commit and push audio file
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add downloads/
           git commit -m "Add downloaded audio for ${{ github.event.inputs.video_id }}"
           git push
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
