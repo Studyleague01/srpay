@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 
 const videoId = process.argv[2]; // Get video ID from command line argument
-const apiKey = "your-rapidapi-key"; // 🔥 Replace with your actual RapidAPI key
+const apiKey = "eee55a9833msh8f2dbd8e2b7970bp194fefjsne09ddc646e78"; // 🔥 Replace with your actual RapidAPI key
 
 if (!videoId) {
   console.error("❌ No video ID provided.");
