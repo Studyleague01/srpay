@@ -2,56 +2,58 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-const COBALT_API = "https://cobalt-api.kwiatekmiki.com";
-const DOWNLOAD_DIR = path.join(__dirname, "..", "downloads");
-
-// Ensure the downloads directory exists
-if (!fs.existsSync(DOWNLOAD_DIR)) {
-    fs.mkdirSync(DOWNLOAD_DIR);
-}
-
-// Get the video ID from CLI argument
-const videoId = process.argv[2];
+const videoId = process.argv[2]; // Get video ID from command line argument
+const apiKey = "your-rapidapi-key"; // 🔥 Replace with your actual RapidAPI key
 
 if (!videoId) {
-    console.error("❌ Missing video ID. Usage: node download_audio.js <VIDEO_ID>");
-    process.exit(1);
+  console.error("❌ No video ID provided.");
+  process.exit(1);
 }
 
 (async () => {
-    try {
-        console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
-        const response = await axios.post(
-            `${COBALT_API}/`,
-            {
-                url: `https://www.youtube.com/watch?v=${videoId}`,
-                audioFormat: "mp3",
-                downloadMode: "audio"
-            },
-            {
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json"
-                }
-            }
-        );
+  try {
+    console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
 
-        const { status, url, filename } = response.data;
-        if (status !== "redirect" && status !== "tunnel") {
-            console.error("❌ Failed to retrieve audio URL.");
-            process.exit(1);
-        }
+    // Call RapidAPI
+    const response = await axios.get("https://youtube-mp36.p.rapidapi.com/dl", {
+      params: { id: videoId },
+      headers: {
+        "x-rapidapi-host": "youtube-mp36.p.rapidapi.com",
+        "x-rapidapi-key": apiKey, // 🔥 API Key used directly
+      },
+    });
 
-        console.log(`🎵 Downloading audio from: ${url}`);
-        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
-        const writer = fs.createWriteStream(filePath);
-        const audioResponse = await axios({ url, method: "GET", responseType: "stream" });
-
-        audioResponse.data.pipe(writer);
-
-        writer.on("finish", () => console.log(`✅ Downloaded: ${filePath}`));
-        writer.on("error", (err) => console.error("❌ Error saving file:", err));
-    } catch (error) {
-        console.error("❌ Error:", error.message);
+    if (response.data.status !== "ok") {
+      console.error("❌ Failed to get download URL:", response.data.msg);
+      process.exit(1);
     }
+
+    const audioUrl = response.data.link;
+    console.log(`🎵 Downloading audio from: ${audioUrl}`);
+
+    // Download audio file
+    const audioResponse = await axios({
+      method: "GET",
+      url: audioUrl,
+      responseType: "stream",
+    });
+
+    const filePath = path.join(__dirname, "..", "downloads", `${videoId}.mp3`);
+    const writer = fs.createWriteStream(filePath);
+
+    audioResponse.data.pipe(writer);
+
+    writer.on("finish", () => {
+      console.log(`✅ Downloaded: ${filePath}`);
+    });
+
+    writer.on("error", (err) => {
+      console.error("❌ Error writing file:", err);
+      process.exit(1);
+    });
+
+  } catch (error) {
+    console.error("❌ Error:", error.message);
+    process.exit(1);
+  }
 })();
