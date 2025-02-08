@@ -1,9 +1,7 @@
 const axios = require("axios");
-const fs = require("fs");
-const path = require("path");
-
-const videoId = process.argv[2]; // Get video ID from command line argument
-const apiKey = "eee55a9833msh8f2dbd8e2b7970bp194fefjsne09ddc646e78"; // 🔥 Replace with your actual RapidAPI key
+const open = require('open');
+const videoId = process.argv[2];
+const apiKey = "eee55a9833msh8f2dbd8e2b7970bp194fefjsne09ddc646e78";
 
 if (!videoId) {
   console.error("❌ No video ID provided.");
@@ -13,13 +11,13 @@ if (!videoId) {
 (async () => {
   try {
     console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
-
+    
     // Call RapidAPI
     const response = await axios.get("https://youtube-mp36.p.rapidapi.com/dl", {
       params: { id: videoId },
       headers: {
         "x-rapidapi-host": "youtube-mp36.p.rapidapi.com",
-        "x-rapidapi-key": apiKey, // 🔥 API Key used directly
+        "x-rapidapi-key": apiKey,
       },
     });
 
@@ -29,28 +27,11 @@ if (!videoId) {
     }
 
     const audioUrl = response.data.link;
-    console.log(`🎵 Downloading audio from: ${audioUrl}`);
-
-    // Download audio file
-    const audioResponse = await axios({
-      method: "GET",
-      url: audioUrl,
-      responseType: "stream",
-    });
-
-    const filePath = path.join(__dirname, "..", "downloads", `${videoId}.mp3`);
-    const writer = fs.createWriteStream(filePath);
-
-    audioResponse.data.pipe(writer);
-
-    writer.on("finish", () => {
-      console.log(`✅ Downloaded: ${filePath}`);
-    });
-
-    writer.on("error", (err) => {
-      console.error("❌ Error writing file:", err);
-      process.exit(1);
-    });
+    console.log(`🎵 Opening audio URL in browser: ${audioUrl}`);
+    
+    // Open the URL in the default browser
+    await open(audioUrl);
+    console.log('✅ URL opened in browser');
 
   } catch (error) {
     console.error("❌ Error:", error.message);
