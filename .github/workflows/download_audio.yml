@@ -1,32 +1,39 @@
-name: Download Audio with RapidAPI
+name: Download YouTube Audio
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
-  workflow_dispatch:  # Allows manual trigger
+  workflow_dispatch:
+    inputs:
+      video_id:
+        description: "YouTube Video ID"
+        required: true
+        type: string
+
+permissions:
+  contents: write  # Allow GitHub Actions to push commits
 
 jobs:
   download-audio:
     runs-on: ubuntu-latest
 
     steps:
-      - name: ⬇️ Checkout repository
+      - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: ⚙️ Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20.17.0
+          node-version: 20
 
-      - name: 📦 Install dependencies
-        run: npm install
+      - name: Install dependencies
+        run: npm install axios fs
 
-      - name: 🔥 Run download script
-        env:
-          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
-          RAPIDAPI_HOST: ${{ secrets.RAPIDAPI_HOST }}
-        run: node scripts/download_audio.js lhpUP_DOH0g
+      - name: Run download script
+        run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
+
+      - name: Commit and push audio file
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add downloads/
+          git commit -m "Add downloaded audio for ${{ github.event.inputs.video_id }}"
+          git push
