@@ -28,7 +28,7 @@ jobs:
         run: npm install axios fs https
 
       - name: Test direct download with curl
-        run: curl -v -L -o test.mp3 "https://companion.nikkosphere.com/latest_version?id=${{ github.event.inputs.video_id }}&itag=140"
+        run: curl -L --max-redirs 10 -o test.mp3 "https://companion.nikkosphere.com/latest_version?id=${{ github.event.inputs.video_id }}&itag=140"
 
       - name: Run download script
         run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
