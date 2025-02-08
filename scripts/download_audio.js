@@ -1,59 +1,89 @@
 const axios = require("axios");
 const fs = require("fs");
-const https = require("https");
 const path = require("path");
 
 const videoId = process.argv[2];
 
 if (!videoId) {
-  console.error("❌ No video ID provided.");
+  console.error("❌ Error: No video ID provided.");
   process.exit(1);
 }
 
-(async () => {
+// Get API details from environment variables (set in GitHub Secrets)
+const RAPIDAPI_HOST = "youtube-mp36.p.rapidapi.com";
+const RAPIDAPI_KEY = "eee55a9833msh8f2dbd8e2b7970bp194fefjsne09ddc646e78";
+
+if (!RAPIDAPI_HOST || !RAPIDAPI_KEY) {
+  console.error("❌ Error: Missing RapidAPI credentials.");
+  process.exit(1);
+}
+
+const options = {
+  method: "GET",
+  url: `https://${RAPIDAPI_HOST}/get_audio`,
+  params: { video_id: videoId },
+  headers: {
+    "X-RapidAPI-Key": RAPIDAPI_KEY,
+    "X-RapidAPI-Host": RAPIDAPI_HOST,
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+    "Accept": "*/*",
+    "Referer": "https://www.example.com",
+  },
+};
+
+async function fetchAudioUrl() {
   try {
     console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
-
-    // Construct Invidious API URL
-    const apiUrl = `https://companion.nikkosphere.com/latest_version?id=${videoId}&itag=140`;
-
-    // Fetch the audio URL
-    const response = await axios.get(apiUrl);
-    if (!response.data || typeof response.data !== "string") {
-      console.error("❌ Failed to get valid audio URL.");
-      process.exit(1);
+    const response = await axios.request(options);
+    if (!response.data || !response.data.audio_url) {
+      throw new Error("Invalid API response: No audio URL found.");
     }
-
-    const audioUrl = response.data;
-    console.log(`🎵 Downloading audio from: ${audioUrl}`);
-
-    // Prepare file path
-    const downloadsDir = path.join(__dirname, "..", "downloads");
-    if (!fs.existsSync(downloadsDir)) fs.mkdirSync(downloadsDir);
-
-    const filePath = path.join(downloadsDir, `${videoId}.m4a`);
-    const file = fs.createWriteStream(filePath);
-
-    // Use HTTPS module to download file
-    https.get(audioUrl, (response) => {
-      if (response.statusCode !== 200) {
-        console.error(`❌ HTTP Error: ${response.statusCode}`);
-        process.exit(1);
-      }
-
-      response.pipe(file);
-
-      file.on("finish", () => {
-        file.close();
-        console.log(`✅ Downloaded: ${filePath}`);
-      });
-    }).on("error", (err) => {
-      console.error("❌ Error downloading file:", err.message);
-      process.exit(1);
-    });
-
+    return response.data.audio_url;
   } catch (error) {
-    console.error("❌ Error:", error.message);
+    console.error("❌ Error fetching audio URL:", error.response ? error.response.status : error.message);
     process.exit(1);
   }
-})();
+}
+
+async function downloadAudio(audioUrl) {
+  try {
+    console.log(`🎵 Downloading audio from: ${audioUrl}...`);
+
+    const response = await axios({
+      method: "GET",
+      url: audioUrl,
+      responseType: "stream",
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+        "Accept": "*/*",
+        "Referer": "https://www.example.com",
+      },
+    });
+
+    const filePath = path.join(__dirname, `${videoId}.mp3`);
+    const writer = fs.createWriteStream(filePath);
+
+    response.data.pipe(writer);
+
+    return new Promise((resolve, reject) => {
+      writer.on("finish", () => {
+        console.log(`✅ Download complete: ${filePath}`);
+        resolve();
+      });
+      writer.on("error", (error) => {
+        reject(error);
+      });
+    });
+  } catch (error) {
+    console.error("❌ Error downloading audio:", error.response ? error.response.status : error.message);
+    process.exit(1);
+  }
+}
+
+async function main() {
+  const audioUrl = await fetchAudioUrl();
+  await downloadAudio(audioUrl);
+}
+
+main();
+
