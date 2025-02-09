@@ -14,11 +14,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install dependencies (Docker, yt-dlp, ffmpeg)
+      - name: Install yt-dlp and ffmpeg (Skip Docker Installation)
         run: |
           sudo apt update
           sudo apt install -y yt-dlp ffmpeg
-          sudo apt install -y docker.io
+
+      - name: Check Docker Version (Ensure Docker is Installed)
+        run: docker --version
 
       - name: Generate PO-Token and Visitor Data
         run: |
