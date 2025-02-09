@@ -25,7 +25,7 @@ if (!videoId) {
             `${COBALT_API}/`,
             {
                 url: `https://www.youtube.com/watch?v=${videoId}`,
-                audioFormat: "mp3",
+                audioFormat: "opus",
                 downloadMode: "audio"
             },
             {
