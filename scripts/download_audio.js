@@ -1,5 +1,5 @@
 const axios = require("axios");
-const fs = require("fs");
+const { exec } = require("child_process");
 const path = require("path");
 
 const API_URL = "https://backendmix-emergeny.vercel.app/d";
@@ -29,44 +29,25 @@ if (!videoId) {
         }
 
         const downloadUrl = response.data.url;
-        console.log(`🎵 Checking accessibility of: ${downloadUrl}`);
-
-        // Check if the URL is accessible
-        try {
-            await axios.head(downloadUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
-        } catch (err) {
-            console.error(`❌ URL is not accessible (HTTP ${err.response?.status || "Unknown"})`);
-            process.exit(1);
-        }
-
         console.log(`🎵 Downloading audio from: ${downloadUrl}`);
         
         const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
-        const writer = fs.createWriteStream(filePath);
-        const audioResponse = await axios({
-            url: downloadUrl,
-            method: "GET",
-            responseType: "stream",
-            headers: { "User-Agent": "Mozilla/5.0" } // Mimic a browser request
-        });
-
-        audioResponse.data.pipe(writer);
-
-        writer.on("finish", async () => {
+        exec(`curl -o ${filePath} "${downloadUrl}"`, (err, stdout, stderr) => {
+            if (err) {
+                console.error("❌ Download error:", stderr);
+                process.exit(1);
+            }
             console.log(`✅ Downloaded: ${filePath}`);
             
             // Commit the file to the repo
-            const { exec } = require("child_process");
-            exec(`git add ${filePath} && git commit -m "Add downloaded audio for ${videoId}" && git push`, (err, stdout, stderr) => {
-                if (err) {
-                    console.error("❌ Git error:", stderr);
+            exec(`git add ${filePath} && git commit -m "Add downloaded audio for ${videoId}" && git push`, (gitErr, gitStdout, gitStderr) => {
+                if (gitErr) {
+                    console.error("❌ Git error:", gitStderr);
                 } else {
                     console.log("✅ Audio file committed and pushed.");
                 }
             });
         });
-
-        writer.on("error", (err) => console.error("❌ Error saving file:", err));
     } catch (error) {
         console.error("❌ Error:", error.message);
     }
