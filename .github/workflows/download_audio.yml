@@ -1,4 +1,4 @@
-name: Download Audio File
+name: Download Audio File v1
 on:
   workflow_dispatch:
     inputs:
@@ -11,26 +11,28 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      
     steps:
       - uses: actions/checkout@v4
-        
+
       - name: Create directory
         run: mkdir -p downloads
-        
+
       - name: Download audio
         run: |
-          url=$(curl -s "https://backendmix-emergeny.vercel.app/d/${{ github.event.inputs.video_id }}" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
+          url=$(curl -s "https://backendmix-emergeny.vercel.app/d/${{ github.event.inputs.video_id }}" | jq -r '.url')
+          if [[ -z "$url" ]]; then
+            echo "Error: No URL found!"
+            exit 1
+          fi
           echo "Download URL: $url"
-          wget -O "downloads/${{ github.event.inputs.video_id }}.mp3" "$url"
-          
+          wget -O "downloads/${{ github.event.inputs.video_id }}.mp3" "$url" || { echo "Download failed!"; exit 1; }
+
       - name: Setup git
         run: |
           git config --global user.name 'github-actions[bot]'
           git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-          
+
       - name: Commit files
         run: |
           git add downloads/
-          git commit -m "Added audio file ${{ github.event.inputs.video_id }}.mp3"
-          git push
+          git diff --staged --quiet || (git commit -m "Added audio file ${{ github.event.inputs.video_id }}.mp3" && git push)
