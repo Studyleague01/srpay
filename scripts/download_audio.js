@@ -24,11 +24,21 @@ if (!videoId) {
         const response = await axios.get(`${API_URL}/${videoId}`);
         
         if (!response.data || !response.data.url) {
-            console.error("❌ Failed to retrieve audio URL.");
+            console.error("❌ Failed to retrieve audio URL from API.");
             process.exit(1);
         }
 
         const downloadUrl = response.data.url;
+        console.log(`🎵 Checking availability of: ${downloadUrl}`);
+
+        // Verify if the URL is accessible
+        try {
+            await axios.head(downloadUrl);
+        } catch (err) {
+            console.error(`❌ Download URL is not accessible (HTTP ${err.response?.status || "Unknown"})`);
+            process.exit(1);
+        }
+
         console.log(`🎵 Downloading audio from: ${downloadUrl}`);
         
         const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
