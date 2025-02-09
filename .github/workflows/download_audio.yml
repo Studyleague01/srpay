@@ -20,8 +20,9 @@ jobs:
         
       - name: Download audio
         run: |
-          download_url=$(curl "https://backendmix-emergeny.vercel.app/d/${{ github.event.inputs.video_id }}" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
-          curl -o "downloads/${{ github.event.inputs.video_id }}.mp3" "$download_url"
+          url=$(curl -s "https://backendmix-emergeny.vercel.app/d/${{ github.event.inputs.video_id }}" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
+          echo "Download URL: $url"
+          wget -O "downloads/${{ github.event.inputs.video_id }}.mp3" "$url"
           
       - name: Setup git
         run: |
