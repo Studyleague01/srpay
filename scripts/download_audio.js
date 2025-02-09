@@ -2,7 +2,7 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 
-const COBALT_API = "https://cobalt-api.kwiatekmiki.com";
+const API_URL = "https://backendmix-emergeny.vercel.app/d";
 const DOWNLOAD_DIR = path.join(__dirname, "..", "downloads");
 
 // Ensure the downloads directory exists
@@ -21,35 +21,36 @@ if (!videoId) {
 (async () => {
     try {
         console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
-        const response = await axios.post(
-            `${COBALT_API}/`,
-            {
-                url: `https://www.youtube.com/watch?v=${videoId}`,
-                audioFormat: "ogg",
-                downloadMode: "audio"
-            },
-            {
-                headers: {
-                    "Accept": "application/json",
-                    "Content-Type": "application/json"
-                }
-            }
-        );
-
-        const { status, url, filename } = response.data;
-        if (status !== "redirect" && status !== "tunnel") {
+        const response = await axios.get(`${API_URL}/${videoId}`);
+        
+        if (!response.data || !response.data.url) {
             console.error("❌ Failed to retrieve audio URL.");
             process.exit(1);
         }
 
-        console.log(`🎵 Downloading audio from: ${url}`);
-        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.ogg`);
+        const downloadUrl = response.data.url;
+        console.log(`🎵 Downloading audio from: ${downloadUrl}`);
+        
+        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
         const writer = fs.createWriteStream(filePath);
-        const audioResponse = await axios({ url, method: "GET", responseType: "stream" });
+        const audioResponse = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
 
         audioResponse.data.pipe(writer);
 
-        writer.on("finish", () => console.log(`✅ Downloaded: ${filePath}`));
+        writer.on("finish", async () => {
+            console.log(`✅ Downloaded: ${filePath}`);
+            
+            // Commit the file to the repo
+            const { exec } = require("child_process");
+            exec(`git add ${filePath} && git commit -m "Add downloaded audio for ${videoId}" && git push`, (err, stdout, stderr) => {
+                if (err) {
+                    console.error("❌ Git error:", stderr);
+                } else {
+                    console.log("✅ Audio file committed and pushed.");
+                }
+            });
+        });
+
         writer.on("error", (err) => console.error("❌ Error saving file:", err));
     } catch (error) {
         console.error("❌ Error:", error.message);
