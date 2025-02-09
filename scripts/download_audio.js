@@ -24,18 +24,18 @@ if (!videoId) {
         const response = await axios.get(`${API_URL}/${videoId}`);
         
         if (!response.data || !response.data.url) {
-            console.error("❌ Failed to retrieve audio URL from API.");
+            console.error("❌ Failed to retrieve audio URL.");
             process.exit(1);
         }
 
         const downloadUrl = response.data.url;
-        console.log(`🎵 Checking availability of: ${downloadUrl}`);
+        console.log(`🎵 Checking accessibility of: ${downloadUrl}`);
 
-        // Verify if the URL is accessible
+        // Check if the URL is accessible
         try {
-            await axios.head(downloadUrl);
+            await axios.head(downloadUrl, { headers: { "User-Agent": "Mozilla/5.0" } });
         } catch (err) {
-            console.error(`❌ Download URL is not accessible (HTTP ${err.response?.status || "Unknown"})`);
+            console.error(`❌ URL is not accessible (HTTP ${err.response?.status || "Unknown"})`);
             process.exit(1);
         }
 
@@ -43,7 +43,12 @@ if (!videoId) {
         
         const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
         const writer = fs.createWriteStream(filePath);
-        const audioResponse = await axios({ url: downloadUrl, method: "GET", responseType: "stream" });
+        const audioResponse = await axios({
+            url: downloadUrl,
+            method: "GET",
+            responseType: "stream",
+            headers: { "User-Agent": "Mozilla/5.0" } // Mimic a browser request
+        });
 
         audioResponse.data.pipe(writer);
 
