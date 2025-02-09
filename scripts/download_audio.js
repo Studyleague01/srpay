@@ -7,10 +7,9 @@ const DOWNLOAD_DIR = path.join(__dirname, "..", "downloads");
 
 // Ensure the downloads directory exists
 if (!fs.existsSync(DOWNLOAD_DIR)) {
-    fs.mkdirSync(DOWNLOAD_DIR);
+    fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 }
 
-// Get the video ID from CLI argument
 const videoId = process.argv[2];
 
 if (!videoId) {
@@ -27,7 +26,7 @@ if (!videoId) {
                 audioFormat: "opus",
                 downloadMode: "audio",
                 filenameStyle: "basic",
-                url: `https://www.youtu.be/${videoId}`
+                url: `https://www.youtube.com/watch?v=${videoId}`
             },
             {
                 headers: {
@@ -37,21 +36,24 @@ if (!videoId) {
             }
         );
 
-        const { status, url, filename } = response.data;
-        if (status !== "redirect" && status !== "tunnel") {
-            console.error("❌ Failed to retrieve audio URL.");
-            process.exit(1);
+        const { status, url } = response.data;
+        if (!url || (status !== "redirect" && status !== "tunnel")) {
+            throw new Error("Failed to retrieve a valid audio URL.");
         }
 
         console.log(`🎵 Downloading audio from: ${url}`);
         const filePath = path.join(DOWNLOAD_DIR, `${videoId}.opus`);
         const writer = fs.createWriteStream(filePath);
+        
         const audioResponse = await axios({ url, method: "GET", responseType: "stream" });
-
         audioResponse.data.pipe(writer);
 
-        writer.on("finish", () => console.log(`✅ Downloaded: ${filePath}`));
-        writer.on("error", (err) => console.error("❌ Error saving file:", err));
+        await new Promise((resolve, reject) => {
+            writer.on("finish", resolve);
+            writer.on("error", reject);
+        });
+
+        console.log(`✅ Downloaded: ${filePath}`);
     } catch (error) {
         console.error("❌ Error:", error.message);
     }
