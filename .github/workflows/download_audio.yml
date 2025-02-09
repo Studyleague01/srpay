@@ -1,4 +1,4 @@
-name: Download Audio File v1
+name: Download Audio File
 on:
   workflow_dispatch:
     inputs:
@@ -14,18 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install yt-dlp and ffmpeg
+        run: |
+          sudo apt update
+          sudo apt install -y yt-dlp ffmpeg
+
       - name: Create directory
         run: mkdir -p downloads
 
       - name: Download audio
         run: |
-          url=$(curl -s "https://backendmix-emergeny.vercel.app/d/${{ github.event.inputs.video_id }}" | jq -r '.url')
-          if [[ -z "$url" ]]; then
-            echo "Error: No URL found!"
-            exit 1
-          fi
-          echo "Download URL: $url"
-          curl -o "downloads/${{ github.event.inputs.video_id }}.mp3" "$url" || { echo "Download failed!"; exit 1; }
+          yt-dlp -f bestaudio -x --audio-format mp3 -o "downloads/${{ github.event.inputs.video_id }}.mp3" "https://www.youtube.com/watch?v=${{ github.event.inputs.video_id }}"
 
       - name: Setup git
         run: |
