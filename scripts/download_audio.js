@@ -8,27 +8,48 @@ const execPromise = util.promisify(exec);
 const API_URL = "https://backendmix-emergeny.vercel.app/d";
 const DOWNLOAD_DIR = path.join(__dirname, "..", "downloads");
 
-async function configureGit() {
+async function setupProject() {
     try {
-        await execPromise('git config --global user.name "GitHub Actions Bot"');
-        await execPromise('git config --global user.email "actions@github.com"');
+        // Configure Git
+        await execPromise('git config --global user.name "github-actions"');
+        await execPromise('git config --global user.email "github-actions@github.com"');
         console.log('✅ Git configuration set successfully');
+
+        // Add and commit package files
+        const setupCommands = [
+            'git add package.json package-lock.json',
+            'git commit -m "Initialize Node.js project"',
+            'git push'
+        ];
+
+        for (const cmd of setupCommands) {
+            try {
+                await execPromise(cmd);
+            } catch (error) {
+                // Ignore errors if files are already committed
+                if (!error.message.includes('nothing to commit')) {
+                    throw error;
+                }
+            }
+        }
+        
+        console.log('✅ Project setup completed');
     } catch (error) {
-        throw new Error(`Failed to configure Git: ${error.message}`);
+        throw new Error(`Project setup failed: ${error.message}`);
     }
 }
 
 async function downloadAudio(videoId) {
     try {
+        // Set up project first
+        await setupProject();
+
         // Ensure the downloads directory exists
         try {
             await fs.access(DOWNLOAD_DIR);
         } catch {
             await fs.mkdir(DOWNLOAD_DIR, { recursive: true });
         }
-
-        // Configure Git before any operations
-        await configureGit();
 
         console.log(`🔍 Fetching audio URL for video ID: ${videoId}...`);
         const response = await axios.get(`${API_URL}/${videoId}`);
@@ -46,7 +67,7 @@ async function downloadAudio(videoId) {
         await execPromise(`curl -o "${filePath}" "${downloadUrl}"`);
         console.log(`✅ Downloaded: ${filePath}`);
         
-        // Commit and push the file
+        // Commit and push the audio file
         const gitCommands = [
             `git add "${filePath}"`,
             `git commit -m "Add downloaded audio for ${videoId}"`,
