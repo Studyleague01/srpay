@@ -24,11 +24,10 @@ if (!videoId) {
         const response = await axios.post(
             `${COBALT_API}/`,
             {
-                url: `https://www.youtube.com/watch?v=${videoId}`,
                 audioFormat: "opus",
                 downloadMode: "audio",
-                audioBitrate: "96",
-                filenameStyle: "basic"
+                filenameStyle: "basic",
+                url: `https://www.youtu.be/${videoId}`
             },
             {
                 headers: {
@@ -45,7 +44,7 @@ if (!videoId) {
         }
 
         console.log(`🎵 Downloading audio from: ${url}`);
-        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp4`);
+        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.opus`);
         const writer = fs.createWriteStream(filePath);
         const audioResponse = await axios({ url, method: "GET", responseType: "stream" });
 
