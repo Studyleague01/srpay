@@ -26,7 +26,7 @@ if (!videoId) {
             {
                 url: `https://www.youtube.com/watch?v=${videoId}`,
                 audioFormat: "opus",
-                audioBitrate: "128",
+                audioBitrate: "96",
                 filenameStyle: "basic"
             },
             {
