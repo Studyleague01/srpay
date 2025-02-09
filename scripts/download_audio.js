@@ -24,11 +24,9 @@ if (!videoId) {
         const response = await axios.post(
             `${COBALT_API}/`,
             {
+                url: `https://www.youtube.com/watch?v=${videoId}`,
                 audioFormat: "mp3",
-                audioQuality: "96kbps",
-                downloadMode: "audio",
-                filenameStyle: "basic",
-                url: `https://www.youtube.com/watch?v=${videoId}`
+                downloadMode: "audio"
             },
             {
                 headers: {
