@@ -1,6 +1,7 @@
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
+const { execSync } = require("child_process");
 
 const COBALT_API = "https://cobalt-api.kwiatekmiki.com";
 const DOWNLOAD_DIR = path.join(__dirname, "..", "downloads");
@@ -15,6 +16,14 @@ const videoId = process.argv[2];
 if (!videoId) {
     console.error("❌ Missing video ID. Usage: node download_audio.js <VIDEO_ID>");
     process.exit(1);
+}
+
+// Ensure Git is properly configured for GitHub Actions
+try {
+    execSync("git config --global user.name \"github-actions\"");
+    console.log("✅ Git user configured successfully.");
+} catch (error) {
+    console.error("❌ Failed to configure Git user:", error.message);
 }
 
 (async () => {
