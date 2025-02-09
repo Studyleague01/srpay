@@ -14,10 +14,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install yt-dlp and ffmpeg
+      - name: Install dependencies (Docker, yt-dlp, ffmpeg)
         run: |
           sudo apt update
           sudo apt install -y yt-dlp ffmpeg
+          sudo apt install -y docker.io
+
+      - name: Generate PO-Token and Visitor Data
+        run: |
+          OUTPUT=$(docker run quay.io/invidious/youtube-trusted-session-generator)
+          echo "$OUTPUT"
+          
+          # Extract visitor_data
+          VISITOR_DATA=$(echo "$OUTPUT" | grep -oP 'visitor_data: \K\S+')
+          echo "Extracted VISITOR_DATA: $VISITOR_DATA"
+
+          # Extract po_token
+          PO_TOKEN=$(echo "$OUTPUT" | grep -oP 'po_token: \K\S+')
+          echo "Extracted PO_TOKEN: $PO_TOKEN"
+
+          # Store in environment variables
+          echo "VISITOR_DATA=$VISITOR_DATA" >> $GITHUB_ENV
+          echo "PO_TOKEN=$PO_TOKEN" >> $GITHUB_ENV
 
       - name: Create directory
         run: mkdir -p downloads
@@ -25,10 +43,6 @@ jobs:
       - name: Download audio
         run: |
           VIDEO_ID="${{ github.event.inputs.video_id }}"
-          
-          # Set your PO-Token and Visitor Data here
-          VISITOR_DATA="CgtPVjFoelNvaElPVSisxaK9BjIKCgJJThIEGgAgVw%3D%3D"
-          PO_TOKEN="IjjTnNOftDRxMZD7p8yF9pXztvCd6rLZv8yFz7rvq_2YpZH2mteQ-5nWh_Sa2ZT7kvuF6_avl7ng2A=="
           
           yt-dlp -f bestaudio -x --audio-format mp3 \
             --add-header "X-YouTube-Client-Visitor-Data: $VISITOR_DATA" \
