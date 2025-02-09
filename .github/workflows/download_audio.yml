@@ -25,7 +25,7 @@ jobs:
             exit 1
           fi
           echo "Download URL: $url"
-          wget -O "downloads/${{ github.event.inputs.video_id }}.mp3" "$url" || { echo "Download failed!"; exit 1; }
+          curl -o "downloads/${{ github.event.inputs.video_id }}.mp3" "$url" || { echo "Download failed!"; exit 1; }
 
       - name: Setup git
         run: |
