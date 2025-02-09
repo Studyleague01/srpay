@@ -1,64 +1,39 @@
-name: Download Audio File
+name: Download YouTube Audio
+
 on:
   workflow_dispatch:
     inputs:
       video_id:
-        description: 'Enter video ID'
+        description: "YouTube Video ID"
         required: true
         type: string
+
+permissions:
+  contents: write  # ✅ Allows pushing changes to the repo
+
 jobs:
-  download:
+  download-audio:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Install yt-dlp and ffmpeg (Skip Docker Installation)
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install axios fs
+
+      - name: Run download script
+        run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
+
+      - name: Commit and push audio file
         run: |
-          sudo apt update
-          sudo apt install -y yt-dlp ffmpeg
-
-      - name: Check Docker Version (Ensure Docker is Installed)
-        run: docker --version
-
-      - name: Generate PO-Token and Visitor Data
-        run: |
-          OUTPUT=$(docker run quay.io/invidious/youtube-trusted-session-generator)
-          echo "$OUTPUT"
-          
-          # Extract visitor_data
-          VISITOR_DATA=$(echo "$OUTPUT" | grep -oP 'visitor_data: \K\S+')
-          echo "Extracted VISITOR_DATA: $VISITOR_DATA"
-
-          # Extract po_token
-          PO_TOKEN=$(echo "$OUTPUT" | grep -oP 'po_token: \K\S+')
-          echo "Extracted PO_TOKEN: $PO_TOKEN"
-
-          # Store in environment variables
-          echo "VISITOR_DATA=$VISITOR_DATA" >> $GITHUB_ENV
-          echo "PO_TOKEN=$PO_TOKEN" >> $GITHUB_ENV
-
-      - name: Create directory
-        run: mkdir -p downloads
-
-      - name: Download audio
-        run: |
-          VIDEO_ID="${{ github.event.inputs.video_id }}"
-          
-          yt-dlp -f bestaudio -x --audio-format mp3 \
-            --add-header "X-YouTube-Client-Visitor-Data: $VISITOR_DATA" \
-            --add-header "X-YouTube-EOM-Visitor-Data: $VISITOR_DATA" \
-            --add-header "X-Goog-AuthUser: 0" \
-            --add-header "Authorization: SAPISIDHASH $PO_TOKEN" \
-            -o "downloads/${VIDEO_ID}.mp3" "https://www.youtube.com/watch?v=${VIDEO_ID}"
-
-      - name: Setup git
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Commit files
-        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
           git add downloads/
-          git diff --staged --quiet || (git commit -m "Added audio file ${{ github.event.inputs.video_id }}.mp3" && git push)
+          git commit -m "Add downloaded audio for ${{ github.event.inputs.video_id }}"
+          git push
