@@ -1,5 +1,4 @@
 name: Download Audio File
-
 on:
   workflow_dispatch:
     inputs:
@@ -7,7 +6,6 @@ on:
         description: 'Enter video ID'
         required: true
         type: string
-
 jobs:
   download:
     runs-on: ubuntu-latest
@@ -22,10 +20,8 @@ jobs:
         
       - name: Download audio
         run: |
-          curl -s "https://backendmix-emergeny.vercel.app/d/${{ github.event.inputs.video_id }}" \
-          | grep -o '"url":"[^"]*"' \
-          | cut -d'"' -f4 \
-          | xargs -I {} curl -Lo "downloads/${{ github.event.inputs.video_id }}.mp3" {}
+          download_url=$(curl "https://backendmix-emergeny.vercel.app/d/${{ github.event.inputs.video_id }}" | grep -o '"url":"[^"]*"' | cut -d'"' -f4)
+          curl -o "downloads/${{ github.event.inputs.video_id }}.mp3" "$download_url"
           
       - name: Setup git
         run: |
