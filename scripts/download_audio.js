@@ -44,7 +44,7 @@ if (!videoId) {
         }
 
         console.log(`🎵 Downloading audio from: ${url}`);
-        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.opus`);
+        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp4`);
         const writer = fs.createWriteStream(filePath);
         const audioResponse = await axios({ url, method: "GET", responseType: "stream" });
 
