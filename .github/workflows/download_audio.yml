@@ -1,39 +1,86 @@
-name: Download YouTube Audio
+name: Download Audio
 
 on:
   workflow_dispatch:
     inputs:
       video_id:
-        description: "YouTube Video ID"
+        description: 'Video ID to download'
         required: true
         type: string
 
-permissions:
-  contents: write  # ✅ Allows pushing changes to the repo
-
 jobs:
-  download-audio:
+  download-and-commit:
     runs-on: ubuntu-latest
-
+    permissions:
+      contents: write
+    
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: '18'
+
+      - name: Create downloads directory
+        run: mkdir -p downloads
 
       - name: Install dependencies
-        run: npm install axios fs child_process path
-
-      - name: Run download script
-        run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
-
-      - name: Commit and push audio file
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          npm init -y
+          npm install axios
+
+      - name: Download audio file
+        run: |
+          node -e "
+          const axios = require('axios');
+          const fs = require('fs');
+          const path = require('path');
+          
+          async function downloadAudio() {
+            try {
+              const videoId = '${{ github.event.inputs.video_id }}';
+              const apiUrl = 'https://backendmix-emergeny.vercel.app/d';
+              
+              console.log('Fetching audio URL...');
+              const response = await axios.get(`${apiUrl}/${videoId}`);
+              
+              if (!response.data?.url) {
+                throw new Error('Failed to get audio URL');
+              }
+              
+              const downloadUrl = response.data.url;
+              console.log('Downloading from:', downloadUrl);
+              
+              const audioResponse = await axios.get(downloadUrl, {
+                responseType: 'stream'
+              });
+              
+              const filePath = path.join('downloads', `${videoId}.mp3`);
+              const writer = fs.createWriteStream(filePath);
+              
+              audioResponse.data.pipe(writer);
+              
+              return new Promise((resolve, reject) => {
+                writer.on('finish', resolve);
+                writer.on('error', reject);
+              });
+            } catch (error) {
+              console.error('Error:', error.message);
+              process.exit(1);
+            }
+          }
+          
+          downloadAudio();"
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Commit and push
+        run: |
           git add downloads/
           git commit -m "Add downloaded audio for ${{ github.event.inputs.video_id }}"
           git push
