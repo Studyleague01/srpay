@@ -26,7 +26,8 @@ if (!videoId) {
             {
                 url: `https://www.youtube.com/watch?v=${videoId}`,
                 audioFormat: "opus",
-                downloadMode: "audio"
+                audioBitrate: "128",
+                filenameStyle: "basic"
             },
             {
                 headers: {
@@ -43,7 +44,7 @@ if (!videoId) {
         }
 
         console.log(`🎵 Downloading audio from: ${url}`);
-        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
+        const filePath = path.join(DOWNLOAD_DIR, `${videoId}.opus`);
         const writer = fs.createWriteStream(filePath);
         const audioResponse = await axios({ url, method: "GET", responseType: "stream" });
 
