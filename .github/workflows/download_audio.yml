@@ -24,7 +24,18 @@ jobs:
 
       - name: Download audio
         run: |
-          yt-dlp -f bestaudio -x --audio-format mp3 -o "downloads/${{ github.event.inputs.video_id }}.mp3" "https://www.youtube.com/watch?v=${{ github.event.inputs.video_id }}"
+          VIDEO_ID="${{ github.event.inputs.video_id }}"
+          
+          # Set your PO-Token and Visitor Data here
+          VISITOR_DATA="CgtPVjFoelNvaElPVSisxaK9BjIKCgJJThIEGgAgVw%3D%3D"
+          PO_TOKEN="IjjTnNOftDRxMZD7p8yF9pXztvCd6rLZv8yFz7rvq_2YpZH2mteQ-5nWh_Sa2ZT7kvuF6_avl7ng2A=="
+          
+          yt-dlp -f bestaudio -x --audio-format mp3 \
+            --add-header "X-YouTube-Client-Visitor-Data: $VISITOR_DATA" \
+            --add-header "X-YouTube-EOM-Visitor-Data: $VISITOR_DATA" \
+            --add-header "X-Goog-AuthUser: 0" \
+            --add-header "Authorization: SAPISIDHASH $PO_TOKEN" \
+            -o "downloads/${VIDEO_ID}.mp3" "https://www.youtube.com/watch?v=${VIDEO_ID}"
 
       - name: Setup git
         run: |
