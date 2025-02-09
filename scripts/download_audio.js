@@ -46,11 +46,11 @@ try {
             }
         );
 
-        const { status, url } = response.data;
-        if (!url || (status !== "redirect" && status !== "tunnel")) {
-            throw new Error("Failed to retrieve a valid audio URL.");
+        if (response.status !== 200 || !response.data.url) {
+            throw new Error(`Failed to retrieve a valid audio URL. Status: ${response.status}, Message: ${response.data.message || "Unknown error"}`);
         }
 
+        const { url } = response.data;
         console.log(`🎵 Downloading audio from: ${url}`);
         const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
         const writer = fs.createWriteStream(filePath);
