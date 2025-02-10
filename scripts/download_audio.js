@@ -5,11 +5,11 @@ const { execSync } = require("child_process");
 
 const COBALT_API = "https://cobalt-api.kwiatekmiki.com";
 const CHANNEL_API = "https://backendmix-emergeny.vercel.app/list";
-const DOWNLOAD_DIR = path.join(__dirname, "..", "downloads");
-const DOWNLOADS_JSON = path.join(DOWNLOAD_DIR, "downloads.json");
+const DOWNLOAD_DIR = path.join(__dirname, "..", "spray");
+const DOWNLOADS_JSON = path.join(__dirname, "..", "downloads.json");
 const MAX_RETRIES = 3;
 
-// Ensure the downloads directory exists
+// Ensure the spray directory exists
 if (!fs.existsSync(DOWNLOAD_DIR)) {
     fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 }
