@@ -1,4 +1,4 @@
-name: clone channel
+name: clone yt ch
 
 on:
   workflow_dispatch:
