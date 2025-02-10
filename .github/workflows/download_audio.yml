@@ -1,4 +1,4 @@
-name: Download YouTube Channel Audio
+name: clone channel
 
 on:
   workflow_dispatch:
@@ -29,11 +29,3 @@ jobs:
 
       - name: Run download script
         run: node scripts/download_audio.js ${{ github.event.inputs.channel_id }}
-
-      - name: Commit and push audio files
-        run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
-          git add downloads/
-          git commit -m "Add downloaded audio for channel ${{ github.event.inputs.channel_id }}"
-          git push
