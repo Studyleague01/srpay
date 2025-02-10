@@ -1,15 +1,12 @@
-name: Download YouTube Channel Audio
+name: Download YouTube Channel Audios
 
 on:
-  workflow_dispatch:
-    inputs:
-      channel_id:
-        description: "YouTube Channel ID"
-        required: true
-        type: string
+  schedule:
+    - cron: '0 */3 * * *'  # Runs every 3 hours (00:00, 03:00, 06:00, etc. UTC)
+  workflow_dispatch:  # Allows manual trigger
 
 permissions:
-  contents: write  # Allows pushing changes to the repo
+  contents: write  # ✅ Allows pushing changes to the repo
 
 jobs:
   download-audio:
@@ -25,7 +22,7 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install axios fs path
+        run: npm install axios fs
 
       - name: Run download script
-        run: node scripts/download_audio.js ${{ github.event.inputs.channel_id }}
+        run: node scripts/download_audio.js
