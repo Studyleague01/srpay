@@ -8,7 +8,7 @@ const CHANNEL_API = "https://backendmix-emergeny.vercel.app/list";
 const DOWNLOAD_DIR = path.join(__dirname, "..", "spray");
 const DOWNLOADS_JSON = path.join(__dirname, "..", "downloads.json");
 const MAX_RETRIES = 3;
-const CHANNEL_ID = "UCrB8j1YCbuYhIcImwNkJgCg"; // 🔥 Hardcoded Channel ID
+const CHANNEL_ID = "UCPGNioeYrJq4nyAt-DVIHZg"; // 🔥 Hardcoded Channel ID
 
 // Ensure the download directory exists
 if (!fs.existsSync(DOWNLOAD_DIR)) {
