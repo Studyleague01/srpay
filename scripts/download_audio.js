@@ -5,7 +5,7 @@ const { execSync } = require("child_process");
 
 const COBALT_API = "https://cobalt-api.kwiatekmiki.com";
 const CHANNEL_API = "https://backendmix-emergeny.vercel.app/list";
-const DOWNLOAD_DIR = path.join(__dirname, "..", "akkidark");
+const DOWNLOAD_DIR = path.join(__dirname, "..", "spray");
 const DOWNLOADS_JSON = path.join(__dirname, "..", "downloads.json");
 const MAX_RETRIES = 3;
 const CHANNEL_ID = "UCrB8j1YCbuYhIcImwNkJgCg"; // 🔥 Hardcoded Channel ID
