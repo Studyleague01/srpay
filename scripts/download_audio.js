@@ -16,11 +16,17 @@ if (!fs.existsSync(DOWNLOAD_DIR)) {
     fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 }
 
-// Load existing downloads data
+// Load existing downloads data and update old file paths
 let downloadsData = {};
 if (fs.existsSync(DOWNLOADS_JSON)) {
     try {
         downloadsData = JSON.parse(fs.readFileSync(DOWNLOADS_JSON, "utf-8"));
+        for (const videoId in downloadsData) {
+            if (!downloadsData[videoId].filePath.startsWith(FILE_BASE_URL)) {
+                downloadsData[videoId].filePath = `${FILE_BASE_URL}${videoId}.mp3`;
+            }
+        }
+        fs.writeFileSync(DOWNLOADS_JSON, JSON.stringify(downloadsData, null, 2));
     } catch (err) {
         console.error("❌ Failed to load downloads.json, resetting file.");
         downloadsData = {};
