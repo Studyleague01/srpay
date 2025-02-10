@@ -1,15 +1,15 @@
-name: Download YouTube Audio
+name: Download YouTube Channel Audio
 
 on:
   workflow_dispatch:
     inputs:
-      video_id:
-        description: "YouTube Video ID"
+      channel_id:
+        description: "YouTube Channel ID"
         required: true
         type: string
 
 permissions:
-  contents: write  # ✅ Allows pushing changes to the repo
+  contents: write  # Allows pushing changes to the repo
 
 jobs:
   download-audio:
@@ -25,15 +25,15 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install axios fs
+        run: npm install axios fs path
 
       - name: Run download script
-        run: node scripts/download_audio.js ${{ github.event.inputs.video_id }}
+        run: node scripts/download_audio.js ${{ github.event.inputs.channel_id }}
 
-      - name: Commit and push audio file
+      - name: Commit and push audio files
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add downloads/
-          git commit -m "Add downloaded audio for ${{ github.event.inputs.video_id }}"
+          git commit -m "Add downloaded audio for channel ${{ github.event.inputs.channel_id }}"
           git push
