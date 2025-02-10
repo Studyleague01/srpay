@@ -5,11 +5,12 @@ const { execSync } = require("child_process");
 
 const COBALT_API = "https://cobalt-api.kwiatekmiki.com";
 const CHANNEL_API = "https://backendmix-emergeny.vercel.app/list";
-const DOWNLOAD_DIR = path.join(__dirname, "..", "spray");
+const DOWNLOAD_DIR = path.join(__dirname, "..", "akkidark");
 const DOWNLOADS_JSON = path.join(__dirname, "..", "downloads.json");
 const MAX_RETRIES = 3;
+const CHANNEL_ID = "UCrB8j1YCbuYhIcImwNkJgCg"; // 🔥 Hardcoded Channel ID
 
-// Ensure the spray directory exists
+// Ensure the download directory exists
 if (!fs.existsSync(DOWNLOAD_DIR)) {
     fs.mkdirSync(DOWNLOAD_DIR, { recursive: true });
 }
@@ -25,18 +26,10 @@ if (fs.existsSync(DOWNLOADS_JSON)) {
     }
 }
 
-// Get the channel ID from CLI argument
-const channelId = process.argv[2];
-
-if (!channelId) {
-    console.error("❌ Missing channel ID. Usage: node download_audio.js <CHANNEL_ID>");
-    process.exit(1);
-}
-
 (async () => {
     try {
-        console.log(`🔍 Fetching videos for channel ID: ${channelId}...`);
-        const response = await axios.get(`${CHANNEL_API}/${channelId}`);
+        console.log(`🔍 Fetching videos for channel ID: ${CHANNEL_ID}...`);
+        const response = await axios.get(`${CHANNEL_API}/${CHANNEL_ID}`);
 
         if (!response.data || !response.data.videos || response.data.videos.length === 0) {
             console.error("❌ No videos found for this channel.");
@@ -51,9 +44,9 @@ if (!channelId) {
             const videoTitle = video.title;
             const filePath = path.join(DOWNLOAD_DIR, `${videoId}.mp3`);
 
-            // Skip if already downloaded
-            if (downloadsData[videoId] && fs.existsSync(filePath)) {
-                console.log(`⏭️ Skipping ${videoTitle}, already downloaded.`);
+            // Skip if already downloaded and valid
+            if (downloadsData[videoId] && fs.existsSync(filePath) && downloadsData[videoId].size > 0) {
+                console.log(`⏭️ Skipping ${videoTitle}, already downloaded and valid.`);
                 continue;
             }
 
@@ -98,6 +91,10 @@ if (!channelId) {
 
                     // Get file size
                     const fileSize = fs.statSync(filePath).size;
+
+                    if (fileSize === 0) {
+                        throw new Error("Downloaded file size is 0 bytes");
+                    }
 
                     console.log(`✅ Downloaded: ${filePath} (${(fileSize / 1024 / 1024).toFixed(2)} MB)`);
 
