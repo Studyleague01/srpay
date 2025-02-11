@@ -1,26 +1,38 @@
 const fs = require('fs');
-const { Innertube } = require('youtubei.js');
+const path = require('path');
+const { Client } = require('youtubei.js');
+
+const filePath = path.join(__dirname, '../downloads.json');
 
 async function checkVideos() {
     try {
-        const youtube = await Innertube.create();
-        const downloads = JSON.parse(fs.readFileSync('downloads.json', 'utf-8'));
+        const rawData = fs.readFileSync(filePath, 'utf8');
+        let downloads = JSON.parse(rawData);
 
-        for (const item of downloads) {
-            const videoId = item.videoId || item.id; // Adjust key based on your JSON structure
-            try {
-                const video = await youtube.getDetails(videoId);
-                if (!video || video.playability_status.status !== 'OK') {
-                    console.log(`❌ Video unavailable: ${videoId}`);
-                } else {
-                    console.log(`✅ Video available: ${videoId}`);
+        if (!Array.isArray(downloads)) {
+            throw new Error('downloads.json must contain an array.');
+        }
+
+        const youtube = new Client();
+
+        for (const entry of downloads) {
+            if (entry.title && entry.title.match(/^[a-zA-Z0-9_-]{11}$/)) { // Check if it's a video ID
+                console.log(`Fetching details for video ID: ${entry.title}`);
+                
+                try {
+                    const video = await youtube.getVideo(entry.title);
+                    entry.title = video.title; // Replace video ID with actual title
+                    console.log(`Updated title: ${video.title}`);
+                } catch (err) {
+                    console.error(`Failed to fetch video info for ${entry.title}:`, err);
                 }
-            } catch (error) {
-                console.log(`❌ Error checking video ${videoId}: ${error.message}`);
             }
         }
+
+        fs.writeFileSync(filePath, JSON.stringify(downloads, null, 2));
+        console.log('downloads.json updated successfully.');
     } catch (error) {
-        console.error('Failed to initialize YouTube client:', error);
+        console.error('Error processing downloads.json:', error);
     }
 }
 
