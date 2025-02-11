@@ -20,8 +20,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Init proj
-        run: npm init -y
       - name: install d
         run: npm install youtubei.js
 
