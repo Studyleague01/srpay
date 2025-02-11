@@ -1,4 +1,4 @@
-name: Check Videos
+name: Update Downloads
 
 on:
   workflow_dispatch:  # Allows manual run
@@ -6,15 +6,17 @@ on:
     - cron: "0 */3 * * *"  # Runs every 3 hours
 
 jobs:
-  update-videos:
+  update-downloads:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
           node-version: 20
 
@@ -23,14 +25,13 @@ jobs:
       - name: install d
         run: npm install youtubei.js
 
-
-      - name: Run script
+      - name: Run script to update downloads.json
         run: node scripts/check_videos.js
 
-      - name: Commit and push if changes
+      - name: Commit and push changes
         run: |
           git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add downloads.json
-          git diff --quiet && git diff --staged --quiet || git commit -m "Updated downloads.json with video titles"
+          git commit -m "Updated downloads.json via GitHub Actions" || echo "No changes to commit"
           git push
