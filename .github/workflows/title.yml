@@ -1,28 +1,24 @@
-name: Check YouTube Downloads
+name: Check YouTube Videos v1
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
+  workflow_dispatch:  # Allows manual trigger
+  schedule:
+    - cron: "0 */3 * * *"  # Runs every 3 hours
 
 jobs:
   check-videos:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
 
       - name: Install dependencies
-        run: npm install youtubei.js
+        run: npm install
 
-      - name: Verify YouTube Videos
+      - name: Run video check script
         run: node scripts/check_videos.js
