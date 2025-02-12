@@ -1,4 +1,4 @@
-name: Sync Channel Data
+name: Sync Channel Data v2
 
 on:
   schedule:
@@ -41,36 +41,6 @@ jobs:
               });
           }
 
-          async function fetchAllVideos() {
-              const channelId = "UCPGNioeYrJq4nyAt-DVIHZg";
-              const baseUrl = "https://invidious.nikkosphere.com/api/v1/channels";
-              let allVideos = [];
-              let page = 1;
-              
-              while (true) {
-                  try {
-                      console.log(`Fetching page ${page}...`);
-                      const url = `${baseUrl}/${channelId}/videos?page=${page}&sort_by=newest`;
-                      const data = await httpsGet(url);
-                      
-                      if (!data.videos || data.videos.length === 0) {
-                          break;
-                      }
-                      
-                      allVideos = allVideos.concat(data.videos);
-                      page++;
-                      
-                      // Small delay between requests
-                      await new Promise(resolve => setTimeout(resolve, 500));
-                  } catch (error) {
-                      console.error(`Error fetching page ${page}:`, error.message);
-                      break;
-                  }
-              }
-              
-              return allVideos;
-          }
-
           async function main() {
               try {
                   console.log('Fetching downloads.json...');
@@ -78,25 +48,30 @@ jobs:
                       'https://raw.githubusercontent.com/Studyleague01/srpay/main/downloads.json'
                   );
 
-                  console.log('Fetching videos from Invidious...');
-                  const videos = await fetchAllVideos();
-                  console.log(`Found ${videos.length} total videos`);
+                  console.log('Fetching channel data...');
+                  const channelData = await httpsGet(
+                      'https://backendmix.vercel.app/c/UCPGNioeYrJq4nyAt-DVIHZg'
+                  );
+
+                  if (channelData.status !== 'ok' || !channelData.videos) {
+                      throw new Error('Invalid response from API');
+                  }
 
                   // Filter and process videos
-                  const processedVideos = videos
-                      .filter(video => downloads[video.videoId])
+                  const processedVideos = channelData.videos
+                      .filter(video => downloads[video.id])
                       .map(video => ({
-                          videoId: video.videoId,
+                          videoId: video.id,
                           title: video.title,
-                          description: video.description,
-                          filePath: downloads[video.videoId].filePath,
-                          published: video.published,
-                          publishedText: video.publishedText,
-                          viewCount: video.viewCount,
-                          lengthSeconds: video.lengthSeconds,
-                          liveNow: video.liveNow,
-                          author: video.author,
-                          authorId: video.authorId
+                          description: video.shortDescription,
+                          filePath: downloads[video.id].filePath,
+                          published: video.uploaded,
+                          publishedText: video.uploadDate,
+                          viewCount: video.views,
+                          lengthSeconds: video.duration,
+                          liveNow: false,
+                          author: video.uploaderName,
+                          authorId: video.uploaderId
                       }));
 
                   console.log(`Processed ${processedVideos.length} matching videos`);
