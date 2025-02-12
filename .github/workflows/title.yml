@@ -1,4 +1,4 @@
-name: Sync Channel Data
+name: Sync Channel Data jsv
 
 on:
   schedule:
@@ -13,98 +13,105 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          python-version: '3.x'
+          node-version: '18'
           
       - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests
+        run: npm install node-fetch
 
       - name: Fetch and process channel data
         run: |
-          python - <<EOF
-          import json
-          import requests
-          import time
-          
-          def fetch_channel_data(channel_id):
-              base_url = "https://pipedapi.kavin.rocks"
-              next_page = None
-              all_videos = []
+          node - <<'EOF'
+          const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+
+          async function fetchWithRetry(url, retries = 3) {
+              for (let i = 0; i < retries; i++) {
+                  try {
+                      const response = await fetch(url);
+                      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                      return await response.json();
+                  } catch (error) {
+                      if (i === retries - 1) throw error;
+                      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+                  }
+              }
+          }
+
+          async function fetchChannelData(channelId) {
+              const baseUrl = "https://pipedapi.kavin.rocks";
+              let nextPage = null;
+              let allVideos = [];
               
-              while True:
-                  # Construct URL with pagination
-                  url = f"{base_url}/channel/{channel_id}"
-                  if next_page:
-                      url += f"?nextpage={next_page}"
+              try {
+                  while (true) {
+                      const url = nextPage ? 
+                          `${baseUrl}/channel/${channelId}?nextpage=${encodeURIComponent(nextPage)}` :
+                          `${baseUrl}/channel/${channelId}`;
+                      
+                      const data = await fetchWithRetry(url);
+                      
+                      const videos = data.relatedStreams?.map(video => ({
+                          title: video.title,
+                          id: video.url.split('=').pop(),
+                          size: 0
+                      })) || [];
+                      
+                      allVideos.push(...videos);
+                      
+                      nextPage = data.nextpage;
+                      if (!nextPage) break;
+                      
+                      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+                  }
                   
-                  # Make request with retry logic
-                  max_retries = 3
-                  for attempt in range(max_retries):
-                      try:
-                          response = requests.get(url)
-                          response.raise_for_status()
-                          data = response.json()
-                          break
-                      except Exception as e:
-                          if attempt == max_retries - 1:
-                              raise
-                          time.sleep(2 ** attempt)  # Exponential backoff
+                  return allVideos;
+              } catch (error) {
+                  console.error('Error fetching channel data:', error);
+                  throw error;
+              }
+          }
+
+          async function processChannelData() {
+              try {
+                  // Fetch downloads.json
+                  const downloadsData = await fetchWithRetry(
+                      'https://raw.githubusercontent.com/Studyleague01/srpay/refs/heads/main/downloads.json'
+                  );
                   
-                  # Extract video data
-                  videos = data.get('relatedStreams', [])
-                  all_videos.extend([{
-                      'title': video['title'],
-                      'id': video['url'].split('=')[-1],
-                      'size': 0  # Placeholder, will be updated from downloads.json
-                  } for video in videos])
+                  // Fetch channel data
+                  const channelId = "UCPGNioeYrJq4nyAt-DVIHZg";
+                  const videos = await fetchChannelData(channelId);
                   
-                  # Check for next page
-                  next_page = data.get('nextpage')
-                  if not next_page:
-                      break
-                  
-                  time.sleep(1)  # Rate limiting
-              
-              return all_videos
-          
-          def process_channel_data():
-              # Fetch existing downloads data
-              try:
-                  downloads_response = requests.get('https://raw.githubusercontent.com/Studyleague01/srpay/refs/heads/main/downloads.json')
-                  downloads_response.raise_for_status()
-                  downloads_data = downloads_response.json()
-              except Exception as e:
-                  print(f"Error fetching downloads.json: {e}")
-                  downloads_data = {}
-              
-              # Fetch channel data
-              channel_id = "UCPGNioeYrJq4nyAt-DVIHZg"
-              videos = fetch_channel_data(channel_id)
-              
-              # Process and filter videos
-              final_data = {}
-              for video in videos:
-                  video_id = video['id']
-                  if video_id in downloads_data:
-                      # Include only videos that exist in downloads.json
-                      final_data[video_id] = {
-                          'title': video['title'],
-                          'id': video_id,
-                          'filePath': downloads_data[video_id]['filePath'],
-                          'size': downloads_data[video_id]['size']
+                  // Process and filter videos
+                  const finalData = {};
+                  for (const video of videos) {
+                      if (downloadsData[video.id]) {
+                          finalData[video.id] = {
+                              title: video.title,
+                              id: video.id,
+                              filePath: downloadsData[video.id].filePath,
+                              size: downloadsData[video.id].size
+                          };
                       }
-              
-              # Save to channel.json
-              with open('channel.json', 'w', encoding='utf-8') as f:
-                  json.dump(final_data, f, indent=2, ensure_ascii=False)
-              
-              print(f"Processed {len(final_data)} videos")
-          
-          process_channel_data()
+                  }
+                  
+                  // Save to channel.json
+                  require('fs').writeFileSync(
+                      'channel.json',
+                      JSON.stringify(finalData, null, 2),
+                      'utf8'
+                  );
+                  
+                  console.log(`Processed ${Object.keys(finalData).length} videos`);
+              } catch (error) {
+                  console.error('Error in processing:', error);
+                  process.exit(1);
+              }
+          }
+
+          processChannelData();
           EOF
 
       - name: Commit and push if changed
