@@ -1,4 +1,4 @@
-name: Sync Channel Data jsv
+name: Sync Channel Data
 
 on:
   schedule:
@@ -8,10 +8,14 @@ on:
 jobs:
   sync-channel-data:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
         
       - name: Setup Node.js
         uses: actions/setup-node@v3
@@ -40,7 +44,7 @@ jobs:
           }
 
           async function fetchChannelData(channelId) {
-              const baseUrl = "https://pipedapi.ducks.party";
+              const baseUrl = "https://cal1.piapi.ggtyler.dev";
               let nextPage = null;
               let allVideos = [];
               
@@ -63,7 +67,7 @@ jobs:
                       nextPage = data.nextpage;
                       if (!nextPage) break;
                       
-                      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
+                      await new Promise(resolve => setTimeout(resolve, 100));
                   }
                   
                   return allVideos;
@@ -77,7 +81,7 @@ jobs:
               try {
                   // Fetch downloads.json
                   const downloadsData = await fetchWithRetry(
-                      'https://raw.githubusercontent.com/Studyleague01/srpay/refs/heads/main/downloads.json'
+                      'https://raw.githubusercontent.com/Studyleague01/srpay/main/downloads.json'
                   );
                   
                   // Fetch channel data
@@ -116,7 +120,7 @@ jobs:
 
       - name: Commit and push if changed
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
           git add channel.json
           git diff --quiet && git diff --staged --quiet || (git commit -m "Update channel data" && git push)
