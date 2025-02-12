@@ -40,7 +40,7 @@ jobs:
           }
 
           async function fetchChannelData(channelId) {
-              const baseUrl = "https://pipedapi.kavin.rocks";
+              const baseUrl = "https://pipedapi.ducks.party";
               let nextPage = null;
               let allVideos = [];
               
