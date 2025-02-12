@@ -2,8 +2,8 @@ name: Sync Channel Data
 
 on:
   schedule:
-    - cron: '0 0 * * *'  # Runs daily at midnight UTC
-  workflow_dispatch:  # Allows manual trigger
+    - cron: '0 0 * * *'
+  workflow_dispatch:
 
 jobs:
   sync-channel-data:
@@ -12,113 +12,70 @@ jobs:
       contents: write
     
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
         
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
+      - uses: actions/setup-node@v3
         with:
           node-version: '18'
-          
-      - name: Install dependencies
-        run: npm install node-fetch
 
-      - name: Fetch and process channel data
+      - name: Fetch and process data
         run: |
           node - <<'EOF'
-          const fetch = (...args) => import('node-fetch').then(({default: fetch}) => fetch(...args));
+          const https = require('https');
 
-          async function fetchWithRetry(url, retries = 3) {
-              for (let i = 0; i < retries; i++) {
-                  try {
-                      const response = await fetch(url);
-                      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                      return await response.json();
-                  } catch (error) {
-                      if (i === retries - 1) throw error;
-                      await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
-                  }
-              }
+          function httpsGet(url) {
+              return new Promise((resolve, reject) => {
+                  https.get(url, (res) => {
+                      let data = '';
+                      res.on('data', (chunk) => data += chunk);
+                      res.on('end', () => resolve(JSON.parse(data)));
+                  }).on('error', reject);
+              });
           }
 
-          async function fetchChannelData(channelId) {
-              const baseUrl = "https://cal1.piapi.ggtyler.dev";
-              let nextPage = null;
-              let allVideos = [];
-              
+          async function main() {
               try {
-                  while (true) {
-                      const url = nextPage ? 
-                          `${baseUrl}/channel/${channelId}?nextpage=${encodeURIComponent(nextPage)}` :
-                          `${baseUrl}/channel/${channelId}`;
-                      
-                      const data = await fetchWithRetry(url);
-                      
-                      const videos = data.relatedStreams?.map(video => ({
-                          title: video.title,
-                          id: video.url.split('=').pop(),
-                          size: 0
-                      })) || [];
-                      
-                      allVideos.push(...videos);
-                      
-                      nextPage = data.nextpage;
-                      if (!nextPage) break;
-                      
-                      await new Promise(resolve => setTimeout(resolve, 100));
-                  }
-                  
-                  return allVideos;
-              } catch (error) {
-                  console.error('Error fetching channel data:', error);
-                  throw error;
-              }
-          }
-
-          async function processChannelData() {
-              try {
-                  // Fetch downloads.json
-                  const downloadsData = await fetchWithRetry(
+                  // Get existing downloads data
+                  const downloads = await httpsGet(
                       'https://raw.githubusercontent.com/Studyleague01/srpay/main/downloads.json'
                   );
-                  
-                  // Fetch channel data
-                  const channelId = "UCPGNioeYrJq4nyAt-DVIHZg";
-                  const videos = await fetchChannelData(channelId);
-                  
-                  // Process and filter videos
-                  const finalData = {};
-                  for (const video of videos) {
-                      if (downloadsData[video.id]) {
-                          finalData[video.id] = {
+
+                  // Get channel data
+                  const channelData = await httpsGet(
+                      'https://cal1.piapi.ggtyler.dev/channel/UCPGNioeYrJq4nyAt-DVIHZg'
+                  );
+
+                  // Process videos
+                  const result = {};
+                  channelData.relatedStreams?.forEach(video => {
+                      const id = video.url.split('=').pop();
+                      if (downloads[id]) {
+                          result[id] = {
                               title: video.title,
-                              id: video.id,
-                              filePath: downloadsData[video.id].filePath,
-                              size: downloadsData[video.id].size
+                              id: id,
+                              filePath: downloads[id].filePath,
+                              size: downloads[id].size
                           };
                       }
-                  }
-                  
-                  // Save to channel.json
+                  });
+
+                  // Save result
                   require('fs').writeFileSync(
                       'channel.json',
-                      JSON.stringify(finalData, null, 2),
-                      'utf8'
+                      JSON.stringify(result, null, 2)
                   );
-                  
-                  console.log(`Processed ${Object.keys(finalData).length} videos`);
               } catch (error) {
-                  console.error('Error in processing:', error);
+                  console.error('Error:', error);
                   process.exit(1);
               }
           }
 
-          processChannelData();
+          main();
           EOF
 
-      - name: Commit and push if changed
+      - name: Commit changes
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
