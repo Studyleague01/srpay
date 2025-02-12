@@ -1,35 +1,115 @@
-name: Update Downloads
+name: Sync Channel Data
 
 on:
-  workflow_dispatch:  # Allows manual run
   schedule:
-    - cron: "0 */3 * * *"  # Runs every 3 hours
+    - cron: '0 0 * * *'  # Runs daily at midnight UTC
+  workflow_dispatch:  # Allows manual trigger
 
 jobs:
-  update-downloads:
+  sync-channel-data:
     runs-on: ubuntu-latest
-
+    
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 20
-
-      - name: install d
-        run: npm install youtubei.js
-
-      - name: Run script to update downloads.json
-        run: node scripts/check_videos.js
-
-      - name: Commit and push changes
+          python-version: '3.x'
+          
+      - name: Install dependencies
         run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add downloads.json
-          git commit -m "Updated downloads.json via GitHub Actions" || echo "No changes to commit"
-          git push
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Fetch and process channel data
+        run: |
+          python - <<EOF
+          import json
+          import requests
+          import time
+          
+          def fetch_channel_data(channel_id):
+              base_url = "https://pipedapi.kavin.rocks"
+              next_page = None
+              all_videos = []
+              
+              while True:
+                  # Construct URL with pagination
+                  url = f"{base_url}/channel/{channel_id}"
+                  if next_page:
+                      url += f"?nextpage={next_page}"
+                  
+                  # Make request with retry logic
+                  max_retries = 3
+                  for attempt in range(max_retries):
+                      try:
+                          response = requests.get(url)
+                          response.raise_for_status()
+                          data = response.json()
+                          break
+                      except Exception as e:
+                          if attempt == max_retries - 1:
+                              raise
+                          time.sleep(2 ** attempt)  # Exponential backoff
+                  
+                  # Extract video data
+                  videos = data.get('relatedStreams', [])
+                  all_videos.extend([{
+                      'title': video['title'],
+                      'id': video['url'].split('=')[-1],
+                      'size': 0  # Placeholder, will be updated from downloads.json
+                  } for video in videos])
+                  
+                  # Check for next page
+                  next_page = data.get('nextpage')
+                  if not next_page:
+                      break
+                  
+                  time.sleep(1)  # Rate limiting
+              
+              return all_videos
+          
+          def process_channel_data():
+              # Fetch existing downloads data
+              try:
+                  downloads_response = requests.get('https://raw.githubusercontent.com/Studyleague01/srpay/refs/heads/main/downloads.json')
+                  downloads_response.raise_for_status()
+                  downloads_data = downloads_response.json()
+              except Exception as e:
+                  print(f"Error fetching downloads.json: {e}")
+                  downloads_data = {}
+              
+              # Fetch channel data
+              channel_id = "UCPGNioeYrJq4nyAt-DVIHZg"
+              videos = fetch_channel_data(channel_id)
+              
+              # Process and filter videos
+              final_data = {}
+              for video in videos:
+                  video_id = video['id']
+                  if video_id in downloads_data:
+                      # Include only videos that exist in downloads.json
+                      final_data[video_id] = {
+                          'title': video['title'],
+                          'id': video_id,
+                          'filePath': downloads_data[video_id]['filePath'],
+                          'size': downloads_data[video_id]['size']
+                      }
+              
+              # Save to channel.json
+              with open('channel.json', 'w', encoding='utf-8') as f:
+                  json.dump(final_data, f, indent=2, ensure_ascii=False)
+              
+              print(f"Processed {len(final_data)} videos")
+          
+          process_channel_data()
+          EOF
+
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add channel.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update channel data" && git push)
