@@ -18,84 +18,80 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Install dependencies
+        run: npm install node-fetch
+
       - name: Fetch and process JSON data
         run: |
-          const fs = require('fs');
+          node -e "const fs = require('fs');
           const fetch = require('node-fetch');
 
           (async () => {
-              const channels = [
-                  'UCyBzV_g6Vfv5GM3aMQb3Y_A',
-                  'UCrB8j1YCbuYhIcImwNkJgCg',
-                  'UCPGNioeYrJq4nyAt-DVIHZg',
-                  'UCEEi1lDCkKi1ukmTAgc9-zA',
-                  'UCVIq229U5A54UVzHQJqZCPQ',
-                  'UCcKMjICfQPjiVMpqS-yF7hA',
-                  'UCWcQCJHYOK2ZZRA2Sym0mOw',
-                  'UCn372MiubHTkPFwxKVv45LQ',
-                  'UCUF0EGa7_yM4TXQl4LYt-YA'
-              ];
+            const channels = [
+              'UCyBzV_g6Vfv5GM3aMQb3Y_A', 'UCrB8j1YCbuYhIcImwNkJgCg', 'UCPGNioeYrJq4nyAt-DVIHZg',
+              'UCEEi1lDCkKi1ukmTAgc9-zA', 'UCVIq229U5A54UVzHQJqZCPQ', 'UCcKMjICfQPjiVMpqS-yF7hA',
+              'UCWcQCJHYOK2ZZRA2Sym0mOw', 'UCn372MiubHTkPFwxKVv45LQ', 'UCUF0EGa7_yM4TXQl4LYt-YA'
+            ];
 
-              const instancesResponse = await fetch('https://raw.githubusercontent.com/n-ce/Uma/main/dynamic_instances.json');
-              const instances = await instancesResponse.json();
-              const pipedInstance = instances.piped[0];
+            const instancesResponse = await fetch('https://raw.githubusercontent.com/n-ce/Uma/main/dynamic_instances.json');
+            const instances = await instancesResponse.json();
+            const pipedInstance = instances.piped[0];
 
-              let allVideos = [];
-              let allChannels = [];
+            let allVideos = [];
+            let allChannels = [];
 
-              for (const channelId of channels) {
-                  try {
-                      const channelResponse = await fetch(`${pipedInstance}/channel/${channelId}`);
-                      if (!channelResponse.ok) continue;
-                      const channelData = await channelResponse.json();
-                      
-                      allChannels.push({
-                          url: `/channel/${channelId}`,
-                          type: "channel",
-                          name: channelData.name,
-                          thumbnail: channelData.avatarUrl,
-                          description: channelData.description,
-                          subscribers: channelData.subscriberCount,
-                          videos: channelData.videoCount,
-                          verified: channelData.verified
-                      });
+            for (const channelId of channels) {
+              try {
+                const channelResponse = await fetch(`${pipedInstance}/channel/${channelId}`);
+                if (!channelResponse.ok) continue;
+                const channelData = await channelResponse.json();
 
-                      const videos = channelData.videos.map(video => ({
-                          type: "stream",
-                          url: `/watch?v=${video.videoId}`,
-                          title: video.title,
-                          thumbnail: `${pipedInstance}/vi/${video.videoId}?host=i.ytimg.com`,
-                          uploaderName: channelData.name,
-                          uploaderUrl: `/channel/${channelId}`,
-                          uploadedDate: video.uploadedDate,
-                          duration: video.duration,
-                          views: video.views,
-                          uploaderVerified: channelData.verified,
-                          shortDescription: video.shortDescription,
-                          uploaded: video.uploaded,
-                          uploaderAvatar: channelData.avatarUrl,
-                          isShort: video.isShort
-                      }));
+                allChannels.push({
+                  url: `/channel/${channelId}`,
+                  type: 'channel',
+                  name: channelData.name,
+                  thumbnail: channelData.avatarUrl,
+                  description: channelData.description,
+                  subscribers: channelData.subscriberCount,
+                  videos: channelData.videoCount,
+                  verified: channelData.verified
+                });
 
-                      allVideos = allVideos.concat(videos);
-                  } catch (error) {
-                      console.error(`Failed to fetch data for channel ${channelId}:`, error);
-                  }
+                const videos = channelData.videos.map(video => ({
+                  type: 'stream',
+                  url: `/watch?v=${video.videoId}`,
+                  title: video.title,
+                  thumbnail: `${pipedInstance}/vi/${video.videoId}?host=i.ytimg.com`,
+                  uploaderName: channelData.name,
+                  uploaderUrl: `/channel/${channelId}`,
+                  uploadedDate: video.uploadedDate,
+                  duration: video.duration,
+                  views: video.views,
+                  uploaderVerified: channelData.verified,
+                  shortDescription: video.shortDescription,
+                  uploaded: video.uploaded,
+                  uploaderAvatar: channelData.avatarUrl,
+                  isShort: video.isShort
+                }));
+
+                allVideos = allVideos.concat(videos);
+              } catch (error) {
+                console.error(`Failed to fetch data for channel ${channelId}:`, error);
               }
+            }
 
-              allVideos.sort((a, b) => b.views - a.views);
-              const sortedData = { items: allVideos, channels: allChannels };
+            allVideos.sort((a, b) => b.views - a.views);
+            const sortedData = { items: allVideos, channels: allChannels };
 
-              fs.writeFileSync('sorted_videos.json', JSON.stringify(sortedData, null, 2));
-          })();
-        shell: node
+            fs.writeFileSync('sorted_videos.json', JSON.stringify(sortedData, null, 2));
+          })();"
 
       - name: Commit and push changes
         run: |
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add sorted_videos.json
-          git commit -m "Updated sorted_videos.json"
+          git commit -m "Updated sorted_videos.json" || echo "No changes to commit"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
