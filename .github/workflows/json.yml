@@ -1,0 +1,81 @@
+name: Update Sorted Videos JSON
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # Runs daily at midnight UTC
+  workflow_dispatch: # Allows manual trigger
+
+jobs:
+  update-json:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Fetch and process JSON data
+        run: |
+          import json
+          import requests
+
+          urls = [
+              'https://raw.githubusercontent.com/Shashwat-CODER-Music/akkidark/refs/heads/main/downloads.json',
+              'https://raw.githubusercontent.com/Studyleague01/srpay/refs/heads/main/downloads.json',
+              'https://raw.githubusercontent.com/Shashwat-CODING/akki/refs/heads/main/downloads.json',
+              'https://raw.githubusercontent.com/Scodify236/sio/refs/heads/main/downloads.json',
+              'https://raw.githubusercontent.com/1fffd/thrilltales/refs/heads/main/downloads.json',
+              'https://raw.githubusercontent.com/channelcnt/channel/refs/heads/main/downloads.json',
+              'https://raw.githubusercontent.com/Studyleague01/amanpar/refs/heads/main/downloads.json',
+              'https://raw.githubusercontent.com/Shashwat-CODER-Music/fintale/refs/heads/main/downloads.json',
+              'https://akkicrime.pages.dev/downloads.json',
+          ]
+
+          all_videos = []
+          for url in urls:
+              try:
+                  response = requests.get(url)
+                  if response.status_code == 200:
+                      data = response.json()
+                      all_videos.extend(data.get("videos", []))
+              except Exception as e:
+                  print(f"Failed to fetch {url}: {e}")
+
+          all_videos.sort(key=lambda x: x.get("viewCount", 0), reverse=True)
+
+          sorted_data = {"items": []}
+          for video in all_videos:
+              sorted_data["items"].append({
+                  "type": "stream",
+                  "url": f"/watch?v={video['videoId']}",
+                  "title": video["title"],
+                  "thumbnail": f"https://pol1.piproxy.ggtyler.dev/vi/{video['videoId']}?host=i.ytimg.com",
+                  "uploaderName": video["author"],
+                  "uploaderUrl": "", # Add uploader's channel link if available
+                  "uploadedDate": "", # Add uploaded date if available
+                  "duration": video["lengthSeconds"],
+                  "views": video["viewCount"],
+                  "uploaderVerified": False,
+                  "shortDescription": video["description"],
+                  "uploaded": video["published"],
+                  "uploaderAvatar": None,
+                  "isShort": False
+              })
+
+          with open("sorted_videos.json", "w") as f:
+              json.dump(sorted_data, f, indent=2)
+        shell: python
+
+      - name: Commit and push changes
+        run: |
+          git config --global user.name "github-actions"
+          git config --global user.email "github-actions@github.com"
+          git add sorted_videos.json
+          git commit -m "Updated sorted_videos.json"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
