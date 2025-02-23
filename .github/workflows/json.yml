@@ -18,9 +18,6 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install dependencies
-        run: npm install node-fetch
-
       - name: Fetch and process JSON data
         run: |
           node -e "const fs = require('fs');
@@ -34,8 +31,9 @@ jobs:
             ];
 
             const instancesResponse = await fetch('https://raw.githubusercontent.com/n-ce/Uma/main/dynamic_instances.json');
+            if (!instancesResponse.ok) throw new Error('Failed to fetch Piped instances');
             const instances = await instancesResponse.json();
-            const pipedInstance = instances.piped[0];
+            const pipedInstance = instances.piped[0] || 'https://pol1.piapi.ggtyler.dev';
 
             let allVideos = [];
             let allChannels = [];
@@ -45,33 +43,34 @@ jobs:
                 const channelResponse = await fetch(`${pipedInstance}/channel/${channelId}`);
                 if (!channelResponse.ok) continue;
                 const channelData = await channelResponse.json();
+                if (!channelData || !channelData.videos) continue;
 
                 allChannels.push({
                   url: `/channel/${channelId}`,
                   type: 'channel',
-                  name: channelData.name,
-                  thumbnail: channelData.avatarUrl,
-                  description: channelData.description,
-                  subscribers: channelData.subscriberCount,
-                  videos: channelData.videoCount,
-                  verified: channelData.verified
+                  name: channelData.name || 'Unknown',
+                  thumbnail: channelData.avatarUrl || '',
+                  description: channelData.description || '',
+                  subscribers: channelData.subscriberCount || 0,
+                  videos: channelData.videoCount || 0,
+                  verified: channelData.verified || false
                 });
 
                 const videos = channelData.videos.map(video => ({
                   type: 'stream',
                   url: `/watch?v=${video.videoId}`,
-                  title: video.title,
+                  title: video.title || 'Unknown',
                   thumbnail: `${pipedInstance}/vi/${video.videoId}?host=i.ytimg.com`,
-                  uploaderName: channelData.name,
+                  uploaderName: channelData.name || 'Unknown',
                   uploaderUrl: `/channel/${channelId}`,
-                  uploadedDate: video.uploadedDate,
-                  duration: video.duration,
-                  views: video.views,
-                  uploaderVerified: channelData.verified,
-                  shortDescription: video.shortDescription,
-                  uploaded: video.uploaded,
-                  uploaderAvatar: channelData.avatarUrl,
-                  isShort: video.isShort
+                  uploadedDate: video.uploadedDate || '',
+                  duration: video.duration || 0,
+                  views: video.views || 0,
+                  uploaderVerified: channelData.verified || false,
+                  shortDescription: video.shortDescription || '',
+                  uploaded: video.uploaded || 0,
+                  uploaderAvatar: channelData.avatarUrl || '',
+                  isShort: video.isShort || false
                 }));
 
                 allVideos = allVideos.concat(videos);
@@ -80,7 +79,7 @@ jobs:
               }
             }
 
-            allVideos.sort((a, b) => b.views - a.views);
+            allVideos.sort((a, b) => (b.views || 0) - (a.views || 0));
             const sortedData = { items: allVideos, channels: allChannels };
 
             fs.writeFileSync('sorted_videos.json', JSON.stringify(sortedData, null, 2));
@@ -91,7 +90,7 @@ jobs:
           git config --global user.name "github-actions"
           git config --global user.email "github-actions@github.com"
           git add sorted_videos.json
-          git commit -m "Updated sorted_videos.json" || echo "No changes to commit"
+          git diff --quiet && git diff --staged --quiet || git commit -m "Updated sorted_videos.json"
           git push
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
